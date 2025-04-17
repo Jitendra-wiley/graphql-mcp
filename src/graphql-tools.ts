@@ -1,4 +1,5 @@
 import { executeGraphQLQuery } from './graphql-client.js';
+import logger from './logger.js';
 
 // Execute a query to fetch available queries in the schema
 export async function getAvailableQueries(): Promise<any> {
@@ -29,9 +30,10 @@ export async function getAvailableQueries(): Promise<any> {
   
   try {
     const result = await executeGraphQLQuery(query);
+    console.log('Available queries:', result);
     return result.__schema.queryType.fields;
   } catch (error) {
-    console.error('Error fetching available queries:', error);
+    logger.error('Error fetching available queries', error);
     throw error;
   }
 }
@@ -65,9 +67,9 @@ export async function getAvailableMutations(): Promise<any> {
   
   try {
     const result = await executeGraphQLQuery(query);
-    return result.__schema.mutationType?.fields || [];
+    return result.__schema.mutationType?.fields ?? [];
   } catch (error) {
-    console.error('Error fetching available mutations:', error);
+    logger.error('Error fetching available mutations', error);
     throw error;
   }
 }
@@ -135,7 +137,7 @@ export async function getTypeDetails(typeName: string): Promise<any> {
     const result = await executeGraphQLQuery(query);
     return result.__type;
   } catch (error) {
-    console.error(`Error fetching details for type ${typeName}:`, error);
+    logger.error(`Error fetching details for type ${typeName}:`, error);
     throw error;
   }
 }

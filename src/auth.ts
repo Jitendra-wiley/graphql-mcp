@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import { URLSearchParams } from 'url';
+import logger from './logger.js';
 
 dotenv.config();
 
@@ -58,7 +59,7 @@ export async function getAccessToken(): Promise<string> {
     
     return data.access_token;
   } catch (error) {
-    console.error('Error fetching access token:', error);
+    logger.error('Error fetching access token', error);
     throw error;
   }
 }

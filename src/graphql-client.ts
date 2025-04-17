@@ -1,7 +1,7 @@
 import { GraphQLClient } from 'graphql-request';
 import { getAccessToken } from './auth.js';
 import dotenv from 'dotenv';
-import { writeFile } from 'fs';
+import logger from './logger.js';
 
 dotenv.config();
 
@@ -23,7 +23,7 @@ export async function createGraphQLClient(): Promise<GraphQLClient> {
     
     return client;
   } catch (error) {
-    console.error('Error creating GraphQL client:', error);
+    logger.error('Error creating GraphQL client', error);
     throw error;
   }
 }
@@ -94,14 +94,14 @@ export async function getGraphQLSchema(): Promise<any> {
     */
     // writeFile('schema.json', JSON.stringify(result, null, 2), (err) => {
     //   if (err) {
-    //     console.error('Error writing schema to file:', err);
+    //     logger.error({ err }, 'Error writing schema to file');
     //   } else {
-    //     console.log('Schema written to schema.json');
+    //     logger.info('Schema written to schema.json');
     //   }
     // });
     return result;
   } catch (error) {
-    console.error('Error fetching GraphQL schema:', error);
+    logger.error('Error fetching GraphQL schema', error);
     throw error;
   }
 }
@@ -113,7 +113,7 @@ export async function executeGraphQLQuery(query: string, variables?: Record<stri
     const result = await client.request(query, variables);
     return result;
   } catch (error) {
-    console.error('Error executing GraphQL query:', error);
+    logger.error('Error executing GraphQL query', error);
     throw error;
   }
 }

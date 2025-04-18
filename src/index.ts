@@ -1,10 +1,9 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { z } from 'zod';
-import { executeGraphQLQuery, getGraphQLSchema } from './graphql-client.js';
-import { getAvailableQueries, getAvailableMutations, getTypeDetails } from './graphql-tools.js';
 import dotenv from 'dotenv';
 import logger from './logger.js';
+import { getAccessToken } from './auth.js';
+import { serverTools } from './serverTools.js';
 
 dotenv.config();
 
@@ -19,266 +18,121 @@ const server = new McpServer({
 });
 
 // GraphQL schema cache
-let schemaCache: any = null;
+let schemaCache = serverTools.schemaCache;
 
-// Execute GraphQL query tool
+// Register all server tools
 server.tool(
   'execute-query',
   'Execute a GraphQL query against the GraphQL API',
-  {
-    query: z.string().describe('The GraphQL query to execute'),
-    variables: z.record(z.any()).optional().describe('Variables for the GraphQL query'),
-  },
-  async ({ query, variables }) => {
-    try {
-      const result = await executeGraphQLQuery(query, variables);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(result, null, 2),
-          },
-        ],
-      };
-    } catch (error: any) {
-      logger.error('Error executing query', { error: error.message });
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Error executing query: ${error.message}`,
-          },
-        ],
-      };
-    }
-  }
+  serverTools.executeQueryTool.parameters,
+  serverTools.executeQueryTool.handler
 );
 
-// Get schema information tool
 server.tool(
   'get-schema',
   'Get information about the GraphQL schema',
-  {
-    typeName: z.string().optional().describe('Filter schema by specific type name'),
-    fieldName: z.string().optional().describe('Filter schema by specific field name'),
-    includeQueries: z.boolean().optional().default(true).describe('Include query definitions'),
-    includeMutations: z.boolean().optional().default(true).describe('Include mutation definitions'),
-  },
-  async ({ typeName, fieldName, includeQueries, includeMutations }) => {
-    try {
-      // Use cached schema or fetch a new one
-      schemaCache ??= await getGraphQLSchema();
-      
-      const schema = schemaCache.__schema;
-      let result: any = {};
-      
-      if (typeName) {
-        // Filter by specific type
-        const typeInfo = schema.types.find((t: any) => t.name === typeName);
-        if (!typeInfo) {
-          logger.warn('Type not found in schema', { typeName });
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `Type "${typeName}" not found in schema.`,
-              },
-            ],
-          };
-        }
-        
-        if (fieldName && typeInfo.fields) {
-          // Filter by specific field in the type
-          const fieldInfo = typeInfo.fields.find((f: any) => f.name === fieldName);
-          if (!fieldInfo) {
-            logger.warn('Field not found in type', { typeName, fieldName });
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: `Field "${fieldName}" not found in type "${typeName}".`,
-                },
-              ],
-            };
-          }
-          result = { type: typeName, field: fieldInfo };
-        } else {
-          result = typeInfo;
-        }
-      } else {
-        // Include top-level query and mutation information
-        result = {
-          types: schema.types.map((t: any) => ({ name: t.name, kind: t.kind })),
-        };
-        
-        if (includeQueries && schema.queryType) {
-          result.queries = schema.queryType.fields;
-        }
-        
-        if (includeMutations && schema.mutationType) {
-          result.mutations = schema.mutationType.fields;
-        }
-      }
-      
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(result, null, 2),
-          },
-        ],
-      };
-    } catch (error: any) {
-      logger.error('Error retrieving schema', { error: error.message });
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Error retrieving schema: ${error.message}`,
-          },
-        ],
-      };
-    }
-  }
+  serverTools.getSchemaTool.parameters,
+  serverTools.getSchemaTool.handler
 );
 
-// List available queries tool
 server.tool(
   'list-queries',
   'List all available GraphQL queries in the API',
-  {},
-  async () => {
-    try {
-      const queries = await getAvailableQueries();
-      
-      // Format queries with their descriptions for better readability
-      const formattedQueries = queries.map((q: any) => ({
-        name: q.name,
-        description: q.description || 'No description available',
-        arguments: q.args.map((arg: any) => ({
-          name: arg.name,
-          description: arg.description || 'No description available',
-          type: arg.type.name || (arg.type.ofType ? arg.type.ofType.name : 'Unknown')
-        }))
-      }));
-      
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(formattedQueries, null, 2),
-          },
-        ],
-      };
-    } catch (error: any) {
-      logger.error('Error listing available queries', { error: error.message });
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Error listing available queries: ${error.message}`,
-          },
-        ],
-      };
-    }
-  }
+  serverTools.listQueriesTools.parameters,
+  serverTools.listQueriesTools.handler
 );
 
-// List available mutations tool
 server.tool(
   'list-mutations',
   'List all available GraphQL mutations in the API',
-  {},
-  async () => {
-    try {
-      const mutations = await getAvailableMutations();
-      
-      // Format mutations with their descriptions for better readability
-      const formattedMutations = mutations.map((m: any) => ({
-        name: m.name,
-        description: m.description || 'No description available',
-        arguments: m.args.map((arg: any) => ({
-          name: arg.name,
-          description: arg.description || 'No description available',
-          type: arg.type.name || (arg.type.ofType ? arg.type.ofType.name : 'Unknown')
-        }))
-      }));
-      
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(formattedMutations, null, 2),
-          },
-        ],
-      };
-    } catch (error: any) {
-      logger.error('Error listing available mutations', { error: error.message });
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Error listing available mutations: ${error.message}`,
-          },
-        ],
-      };
-    }
-  }
+  serverTools.listMutationsTool.parameters,
+  serverTools.listMutationsTool.handler
 );
 
-// Get type details tool
 server.tool(
   'type-details',
   'Get detailed information about a GraphQL type',
-  {
-    typeName: z.string().describe('The name of the GraphQL type to get details for'),
-  },
-  async ({ typeName }) => {
-    try {
-      const typeDetails = await getTypeDetails(typeName);
-      
-      if (!typeDetails) {
-        logger.warn('Type not found in schema', { typeName });
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Type "${typeName}" not found in schema.`,
-            },
-          ],
-        };
-      }
-      
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(typeDetails, null, 2),
-          },
-        ],
-      };
-    } catch (error: any) {
-      logger.error('Error retrieving type details', { error: error.message, typeName });
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Error retrieving type details: ${error.message}`,
-          },
-        ],
-      };
-    }
-  }
+  serverTools.typeDetailsTool.parameters,
+  serverTools.typeDetailsTool.handler
+);
+
+server.tool(
+  'generate-query',
+  'Generate a GraphQL query or mutation template with variables based on operation name',
+  serverTools.generateQueryTool.parameters,
+  serverTools.generateQueryTool.handler
+);
+
+server.tool(
+  'check-heartbeat',
+  'Check if the GraphQL server is alive and responding to heartbeat requests',
+  serverTools.checkHeartbeatTool.parameters,
+  serverTools.checkHeartbeatTool.handler
+);
+
+server.tool(
+  'get-deal-with-funding-nodes',
+  'Get detailed information about a deal including its associated funding nodes',
+  serverTools.getDealWithFundingNodesTool.parameters,
+  serverTools.getDealWithFundingNodesTool.handler
+);
+
+server.tool(
+  'get-order-author-details',
+  'Get detailed information about authors associated with a specific order',
+  serverTools.getOrderAuthorDetailsTool.parameters,
+  serverTools.getOrderAuthorDetailsTool.handler
+);
+
+server.tool(
+  'get-customer-order',
+  'Get detailed information about a customer order using the exact query format that works in Insomnia',
+  serverTools.getCustomerOrderTool.parameters,
+  serverTools.getCustomerOrderTool.handler
+);
+
+server.tool(
+  'get-price-proposal',
+  'Get detailed information about a price proposal including pricing tiers and related parties',
+  serverTools.getPriceProposalTool.parameters,
+  serverTools.getPriceProposalTool.handler
 );
 
 // The main function to run the server
 async function main() {
   try {
+    // Display environment information
+    logger.info('Starting GraphQL MCP Server', {
+      nodeEnv: process.env.NODE_ENV ?? 'development',
+      hasGraphQLUrl: Boolean(process.env.GRAPHQL_URL),
+      logLevel: process.env.LOG_LEVEL ?? 'info'
+    });
+    
     // Try to pre-fetch schema on startup
     try {
       logger.info('Pre-fetching GraphQL schema...');
+      
+      // Use the existing getGraphQLSchema function from graphql-client.js
+      const { getGraphQLSchema } = await import('./graphql-client.js');
       schemaCache = await getGraphQLSchema();
-      logger.info('Schema fetched successfully');
+      
+      // Verify schema structure
+      const schemaData = schemaCache?.__schema ?? schemaCache?.data?.__schema;
+      if (!schemaData) {
+        logger.warn('Schema fetched but structure is unexpected', {
+          topLevelKeys: Object.keys(schemaCache ?? {})
+        });
+      } else {
+        const typeCount = schemaData.types?.length ?? 0;
+        const queryFields = schemaData.queryType?.fields?.length ?? 0;
+        const mutationFields = schemaData.mutationType?.fields?.length ?? 0;
+        
+        logger.info('Schema fetched successfully', {
+          typeCount,
+          queryFields,
+          mutationFields
+        });
+      }
     } catch (error: any) {
       logger.error(
         'Failed to pre-fetch schema, will try again when needed',
@@ -289,7 +143,10 @@ async function main() {
       // Try to debug OAuth token acquisition
       try {
         logger.info('Testing OAuth authentication...');
-        logger.info('Successfully obtained OAuth token.');
+        const token = await getAccessToken();
+        if (token) {
+          logger.info('Successfully obtained OAuth token.');
+        }
       } catch (authError: any) {
         logger.error(
           'OAuth authentication test failed',
@@ -299,12 +156,21 @@ async function main() {
       }
     }
     
-    // Initialize transport
+    // Initialize transport with better error handling
+    logger.info('Initializing MCP StdioServerTransport...');
     const transport = new StdioServerTransport();
     
-    // Connect the server
-    await server.connect(transport);
-    logger.info('GraphQL MCP Server running on stdio');
+    // Connect the server with error handling
+    try {
+      logger.info('Connecting MCP server to transport...');
+      await server.connect(transport);
+      logger.info('GraphQL MCP Server running on stdio');
+    } catch (connectError: any) {
+      logger.error('Error connecting MCP server to transport', {
+        error: connectError.message
+      });
+      throw connectError;
+    }
   } catch (error: any) {
     logger.error('Fatal error in main()', { error: error.message });
     process.exit(1);

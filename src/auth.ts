@@ -19,6 +19,9 @@ let tokenCache: {
 export async function getAccessToken(): Promise<string> {
   // If we have a valid cached token, return it
   if (tokenCache && tokenCache.expiresAt > Date.now()) {
+    logger.debug('Using cached access token', { 
+      expiresIn: Math.round((tokenCache.expiresAt - Date.now()) / 1000) + ' seconds' 
+    });
     return tokenCache.accessToken;
   }
 
@@ -27,9 +30,16 @@ export async function getAccessToken(): Promise<string> {
   const authUrl = process.env.AUTH_URL;
 
   if (!clientId || !clientSecret || !authUrl) {
+    logger.error('Missing required OAuth environment variables', {
+      hasClientId: Boolean(clientId),
+      hasClientSecret: Boolean(clientSecret),
+      hasAuthUrl: Boolean(authUrl),
+    });
     throw new Error('Missing OAuth credentials in environment variables');
   }
 
+  logger.info('Fetching new access token...', { authUrl });
+  
   const params = new URLSearchParams();
   params.append('grant_type', 'client_credentials');
   params.append('client_id', clientId);
@@ -46,10 +56,22 @@ export async function getAccessToken(): Promise<string> {
 
     if (!response.ok) {
       const errorText = await response.text();
+      logger.error('Failed to obtain access token', {
+        status: response.status,
+        statusText: response.statusText,
+        responseBody: errorText
+      });
       throw new Error(`Failed to obtain access token: ${response.status} ${errorText}`);
     }
 
     const data = await response.json() as TokenResponse;
+    
+    // Log token details without exposing the token itself
+    logger.info('Successfully obtained new access token', {
+      tokenType: data.token_type,
+      expiresIn: data.expires_in,
+      hasRefreshToken: Boolean(data.refresh_token)
+    });
     
     // Cache the token with a buffer time of 60 seconds
     tokenCache = {

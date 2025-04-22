@@ -1,6 +1,6 @@
 import { executeGraphQLQuery } from './graphql-client.js';
 import logger from './logger.js';
-import { getAvailableMutation, getAvailableQuery, priceProposalQuery } from './query.js';
+import { getAvailableMutation, getAvailableQuery, getCustomerOrderByIdQuery, priceProposalQuery } from './query.js';
 
 // Execute a query to fetch available queries in the schema
 export async function getAvailableQueries(): Promise<any> {
@@ -898,23 +898,12 @@ export async function getCustomerOrderById(biId: string): Promise<any> {
   try {
     logger.info(`Retrieving customer order with biId: ${biId}`);
     
-    // Using the minimal working query structure
-    const query = `
-      query getCustomerOrder($biId: String) {
-        getCustomerOrder(biId: $biId) {
-          biId
-          bpStatus {
-            code
-          }
-          createdAt
-          modifiedAt
-        }
-      }
-    `;
+    // Using the query with additional fields
+    const query = getCustomerOrderByIdQuery;
     
     const variables = { biId };
     
-    logger.debug('Executing minimal customer order query', { 
+    logger.debug('Executing customer order query with additional fields', { 
       biId,
       query: query.replace(/\s+/g, ' ').trim(),
       variables

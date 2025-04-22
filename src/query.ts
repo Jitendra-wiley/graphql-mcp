@@ -183,3 +183,163 @@ export const priceProposalQuery = `
     }
   }
 `;
+
+export const getCustomerOrderByIdQuery  = `
+query getCustomerOrder($biId: String) {
+	getCustomerOrder(biId: $biId) {
+		biId
+		uid
+		wAsOrderId
+		bpStatus {
+			code
+		}
+		wAsTaxCode
+		biCreatedAt
+		wPoNumber
+		wAsSpecialNotes
+		paybPayment {
+			typeName
+			... on CreditCardPayment {
+				ccpaCardType
+				wAsCcToken
+				ccpaNameOnCard
+				ccpaCardNumber
+				ccpaExpirationDate
+				wAuthCode
+			}
+		}
+
+		wPaymentStatus
+		wDiscountType # Not mapped inside ORDERS05
+		wDiscountCode
+		pricPrice {
+			edges {
+				mapsOn {
+					code
+				}
+				node {
+					amount
+					units {
+						code
+					}
+				}
+			}
+		}
+
+		prRelatedParties {
+			edges {
+				mapsOn {
+					code
+				}
+				node {
+					id
+					uid
+					... on ViaxIndividual {
+						paId
+						wAlmId
+						wAuthorID
+						wEmail
+						wSAPId
+						wAsOrganization
+						wAsInstitution
+						wAsDepartment
+					}
+				}
+			}
+		}
+		# Credit Card
+		paybPayment {
+			typeName
+			... on StripeCustomerCreditCardPayment {
+				ccpaCardType
+				wAsCcToken
+				ccpaNameOnCard
+				ccpaCardNumber
+				ccpaExpirationDate
+				wAuthCode
+			}
+		}
+		paybBillingAddress {
+			# Kafka.Address.streetAddress
+			upaLine1
+			# Kafka.Address.streetAddress
+			upaLine2
+			# Kafka.Address.city
+			upaCity
+			# Kafka.Address.regionCode
+			gadStateOrProvince
+			gadCountry {
+				# Kafka.Address.countryCode
+				iso2Code
+				# Kafka.Address.country
+				# no need to set this every time as it will update the name of a single instance
+				# of the Country identified by the unique iso2Codez attribute
+				name
+			}
+			# Kafka.Address.postalCode
+			upaPostcode
+			# Kafka.Address.phoneNumber
+			upaPhoneNumber
+			# Kafka.Address.email
+			upaEmail
+		}
+
+		wTaxExemptionCertificate {
+			# Not mapped inside ORDERS05
+			# Kafka.Order.taxExemptionNumber
+			texcId
+			texcValidFor {
+				# Kafka.Order.taxExemptionExpirationDate
+				end
+			}
+		}
+		# Kafka.Order.vatIdNumber
+		wVatIdNumber
+		wAsAuthorCountry {
+			# Not mapped inside ORDERS05
+			# Kafka.Order.countryCode
+			iso2Code
+			name
+		}
+		wAsPromoCode # Not mapped inside ORDERS05
+		wAsSapOrderId
+		wAsPayload
+		wAsUpdatedOrder
+
+		hiConsistsOf {
+			uid
+			typeName
+			biiSalable {
+				typeName
+				... on ViaxConfigurableSalableInstalledBaseRecord {
+					wAsSubmissionId
+					maId
+					ibrProduct {
+						uid
+						maId
+					}
+					wAsArticleId
+					wAsArticleDoi
+					wAsArticleIdentifier
+					wAsArticleTitle
+					wAsDhId
+					wAsManuscriptId
+				}
+			}
+			biiQuantity {
+				amount
+				units {
+					code
+				}
+			}
+		}
+		biRelatesTo(_mapsOn: { code: "BILL" }) {
+			edges {
+				node {
+					uid
+				}
+			}
+		}
+	}
+}
+`

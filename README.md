@@ -1,6 +1,6 @@
 # GraphQL MCP Server
 
-This is a Model Context Protocol (MCP) server that connects to the GraphQL API and provides tools to interact with it through an LLM interface like Claude.
+This is a Model Context Protocol (MCP) server that connects to the GraphQL API and provides tools to interact with it through an LLM interface like Claude, Copilot
 
 ## Features
 
@@ -14,8 +14,6 @@ This is a Model Context Protocol (MCP) server that connects to the GraphQL API a
 - **Standardized error handling** with helpful suggestions
 
 ## Project Structure
-
-The project has been refactored from a monolithic structure into a well-organized, maintainable architecture:
 
 ```
 src/
@@ -41,8 +39,6 @@ src/
 ├── logger.ts                       # Logging configuration
 └── index.ts                        # Main server entry point
 ```
-
-## Key Improvements
 
 ### **Modular Architecture**
 - **Separated concerns**: Tools, GraphQL operations, and utilities are organized logically
@@ -206,7 +202,6 @@ To run in development mode with automatic reloading:
 npm install -g nodemon
 npm run dev
 ```
-
 ### Adding New Tools
 
 1. **Add types** to `src/tools/types.ts`
@@ -231,42 +226,3 @@ npm run dev
 2. **Export** from `src/graphql/mutations/index.ts`
 3. **Implement** corresponding tools
 
-## Architecture Benefits
-
-### **Maintainability**
-- **Single responsibility**: Each file has one clear purpose
-- **Easy to extend**: Follow established patterns for new features
-- **Clear dependencies**: Explicit imports and exports
-
-### **Performance**
-- **Better tree-shaking**: Unused code can be eliminated
-- **Reduced memory footprint**: Smaller individual modules
-- **Faster compilation**: TypeScript processes smaller files more efficiently
-
-### **Developer Experience**
-- **Better IDE support**: Improved intellisense and code completion
-- **Easier navigation**: Find code faster with logical organization
-- **Focused code reviews**: Changes isolated to specific areas
-
-## VS Code Integration
-
-This project includes a `.vscode/mcp.json` file that enables you to run the MCP server directly from VS Code when using compatible extensions.
-
-## Migration Notes
-
-The refactoring maintains **full backward compatibility**:
-- All existing tool registrations work unchanged
-- Same API interfaces maintained
-- Existing imports continue to work
-- Legacy files converted to simple re-export wrappers
-
-## File Size Comparison
-
-| Component | Before | After | Improvement |
-|-----------|--------|-------|-------------|
-| **serverTools.ts** | 1,325 lines | 5 lines (wrapper) | 99% reduction |
-| **Average file size** | 1,325 lines | ~150 lines | Much more manageable |
-| **Code organization** | Monolithic | Modular | Better maintainability |
-| **Total organized code** | N/A | ~1,100 lines | Well-structured modules |
-
-The refactoring successfully transforms a monolithic structure into a well-organized, maintainable codebase while preserving all functionality and maintaining backward compatibility.

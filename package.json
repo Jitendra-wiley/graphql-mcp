@@ -9,7 +9,7 @@
     "dev": "tsc -w & nodemon build/index.js"
   },
   "keywords": [],
-  "author": "",
+  "author": "Jitendra Kumar <jikumar@wiley.com>",
   "license": "ISC",
   "description": "MCP server for interacting with a GraphQL API",
   "devDependencies": {

@@ -16,10 +16,20 @@ export async function createGraphQLClient(): Promise<GraphQLClient> {
   try {
     const token = await getAccessToken();
     
+    const authHeader = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+    
     const client = new GraphQLClient(GRAPHQL_URL as string, {
       headers: {
-        authorization: token,
+        'Authorization': authHeader,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
+    });
+    
+    logger.debug('GraphQL client created with auth header', {
+      hasToken: Boolean(token),
+      tokenLength: token.length,
+      authHeader: authHeader.substring(0, 20) + '...'
     });
     
     return client;
@@ -57,8 +67,13 @@ export async function getGraphQLSchema(): Promise<IntrospectionResult> {
       const fs = await import('fs');
       const path = await import('path');
       const logDir = path.join(process.cwd(), 'logs');
-      const schemaPath = path.join(logDir, 'schema-debug.json');
       
+      // Create logs directory if it doesn't exist
+      if (!fs.existsSync(logDir)) {
+        fs.mkdirSync(logDir, { recursive: true });
+      }
+      
+      const schemaPath = path.join(logDir, 'schema-debug.json');
       fs.writeFileSync(schemaPath, JSON.stringify(result, null, 2));
       logger.info(`Schema debug info written to ${schemaPath}`);
     } catch (writeError) {
@@ -71,7 +86,9 @@ export async function getGraphQLSchema(): Promise<IntrospectionResult> {
     logger.error('Error fetching GraphQL schema', { 
       error: error.message,
       statusCode: error.response?.status,
-      responseBody: error.response?.error
+      statusText: error.response?.statusText,
+      responseBody: error.response?.error || error.response?.message,
+      url: GRAPHQL_URL
     });
     throw error;
   }
@@ -89,10 +106,12 @@ export async function executeGraphQLQuery(query: string, variables?: Record<stri
     // Log the query and variables for debugging
     logger.debug('Executing GraphQL query:', { 
       query: query.replace(/\s+/g, ' ').trim().substring(0, 100) + (query.length > 100 ? '...' : ''),
-      variables
+      variables,
+      url: GRAPHQL_URL
     });
     
-    const result = await client.request<GraphQLResponse>(query, variables);
+    // Fix: Ensure proper request format
+    const result = await client.request<GraphQLResponse>(query, variables || {});
     
     // Log the raw response structure
     logger.debug('GraphQL response structure:', {
@@ -110,7 +129,9 @@ export async function executeGraphQLQuery(query: string, variables?: Record<stri
       query: query.replace(/\s+/g, ' ').trim().substring(0, 100) + (query.length > 100 ? '...' : ''),
       variables,
       statusCode: error.response?.status,
-      responseBody: error.response?.error
+      statusText: error.response?.statusText,
+      responseBody: error.response?.error || error.response?.message,
+      url: GRAPHQL_URL
     });
     throw error;
   }

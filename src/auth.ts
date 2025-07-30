@@ -50,6 +50,7 @@ export async function getAccessToken(): Promise<string> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
       },
       body: params.toString(),
     });
@@ -59,18 +60,26 @@ export async function getAccessToken(): Promise<string> {
       logger.error('Failed to obtain access token', {
         status: response.status,
         statusText: response.statusText,
-        responseBody: errorText
+        responseBody: errorText,
+        authUrl: authUrl
       });
-      throw new Error(`Failed to obtain access token: ${response.status} ${errorText}`);
+      throw new Error(`Failed to obtain access token: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
     const data = await response.json() as TokenResponse;
+    
+    // Validate the token response
+    if (!data.access_token) {
+      logger.error('Invalid token response - missing access_token', { data });
+      throw new Error('Invalid token response: missing access_token');
+    }
     
     // Log token details without exposing the token itself
     logger.info('Successfully obtained new access token', {
       tokenType: data.token_type,
       expiresIn: data.expires_in,
-      hasRefreshToken: Boolean(data.refresh_token)
+      hasRefreshToken: Boolean(data.refresh_token),
+      tokenLength: data.access_token.length
     });
     
     // Cache the token with a buffer time of 60 seconds
@@ -81,7 +90,10 @@ export async function getAccessToken(): Promise<string> {
     
     return data.access_token;
   } catch (error) {
-    logger.error('Error fetching access token', error);
+    logger.error('Error fetching access token', { 
+      error: error instanceof Error ? error.message : String(error),
+      authUrl: authUrl
+    });
     throw error;
   }
 }
